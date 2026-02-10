@@ -13,28 +13,27 @@ def create_app(config_object=None):
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
 
-    # CORS (include Swagger UI and spec endpoints)
-    # Auth routes need explicit allow_headers so cross-origin clients can send Authorization
+    # CORS: apply to all routes so preflight (OPTIONS) and actual requests get headers
+    _cors_origins = list(Config.CORS_ORIGINS)
+    print(f"[CORS] Allowed origins: {_cors_origins}", flush=True)
     CORS(
         app,
-        resources={
-            r"/auth/*": {
-                "origins": Config.CORS_ORIGINS,
-                "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"],
-            },
-            r"/users/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/projects/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/backlog/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/sprints/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/tasks/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/performance/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/chat/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/dashboard/*": {"origins": Config.CORS_ORIGINS, "allow_headers": ["Content-Type", "Authorization", "X-Access-Token"]},
-            r"/apidocs/*": {"origins": Config.CORS_ORIGINS},
-            r"/apispec_1.json": {"origins": Config.CORS_ORIGINS},
-        },
+        origins=_cors_origins,
         supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     )
+
+    @app.before_request
+    def _log_cors_request():
+        from flask import request
+        origin = request.headers.get("Origin")
+        if origin:
+            allowed = origin in _cors_origins
+            print(
+                f"[CORS] {request.method} {request.path} Origin={origin!r} allowed={allowed}",
+                flush=True,
+            )
 
     # Swagger UI at /apidocs (Flasgger default)
     Swagger(app, template=SWAGGER_TEMPLATE)

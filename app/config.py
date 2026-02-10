@@ -40,10 +40,10 @@ class Config:
     SUPABASE_ANON_KEY = _str("SUPABASE_ANON_KEY")
     SUPABASE_KEY = _str("SUPABASE_SERVICE_ROLE_KEY") or _str("SUPABASE_ANON_KEY")
 
-    # CORS
-    CORS_ORIGINS = [o.strip() for o in _str("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",") if o.strip()]
+    # CORS (frontend dev servers: Vite often uses 8080, others use 3000/5173)
+    CORS_ORIGINS = [o.strip() for o in _str("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:8080").split(",") if o.strip()]
     if not CORS_ORIGINS:
-        CORS_ORIGINS = ["http://localhost:3000", "http://localhost:5173"]
+        CORS_ORIGINS = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
 
     @classmethod
     def supabase_configured(cls) -> bool:
