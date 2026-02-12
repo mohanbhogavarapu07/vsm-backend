@@ -81,8 +81,19 @@ def login_route():
 @bp.route("/me", methods=["GET"])
 @require_auth
 def me():
-    """GET /auth/me - Current user from JWT."""
+    """GET /auth/me - Current user from DB (so role is up-to-date)."""
     user, err = get_user_by_id(g.current_user["user_id"])
     if err:
         return api_error(err, 404)
     return api_success(user, message="OK")
+
+
+@bp.route("/refresh", methods=["POST"])
+@require_auth
+def refresh():
+    """POST /auth/refresh - Issue new JWT with current role from DB. Use after role changed in DB (e.g. employee -> admin)."""
+    user, err = get_user_by_id(g.current_user["user_id"])
+    if err:
+        return api_error(err, 404)
+    token = create_token(user["user_id"], user["role"], user["email"])
+    return api_success({"user": user, "token": token}, message="Token refreshed")
