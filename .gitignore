@@ -10,6 +10,11 @@ __pycache__/
 *$py.class
 *.so
 .Python
+# Explicit __pycache__ directories
+app/__pycache__/
+app/routes/__pycache__/
+app/middleware/__pycache__/
+app/services/__pycache__/
 build/
 develop-eggs/
 dist/
