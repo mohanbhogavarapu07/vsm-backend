@@ -127,6 +127,19 @@ def assign_employee(project_id: int, employee_id: int) -> Tuple[Optional[dict], 
         return None, "Project not found"
     if not exists(sb, "users", "user_id", employee_id):
         return None, "User not found"
+    
+    existing = sb.table("project_assignments").select("project_id").eq("employee_id", employee_id).execute()
+    existing_data = getattr(existing, "data", []) or []
+    if existing_data:
+        existing_project_id = existing_data[0].get("project_id")
+        if existing_project_id == project_id:
+            return None, "Employee is already assigned to this project"
+        # Transfer: remove from old project so they can be assigned here (e.g. all tasks done)
+        try:
+            sb.table("project_assignments").delete().eq("project_id", existing_project_id).eq("employee_id", employee_id).execute()
+        except Exception:
+            pass
+
     try:
         r = sb.table("project_assignments").insert({"project_id": project_id, "employee_id": employee_id}).execute()
         row, err = one(r, "Assignment")
@@ -140,7 +153,7 @@ def assign_employee(project_id: int, employee_id: int) -> Tuple[Optional[dict], 
 
 
 def assign_employees(project_id: int, employee_ids: List[int]) -> Tuple[List[dict], Optional[str]]:
-    """Assign multiple employees to a project. Skips already-assigned; returns list of new assignments."""
+    """Assign multiple employees to a project. Skips already-assigned; returns list of new assignments. Employees can only be assigned to one project."""
     sb = get_supabase()
     if not exists(sb, "projects", "project_id", project_id):
         return [], "Project not found"
@@ -150,6 +163,19 @@ def assign_employees(project_id: int, employee_ids: List[int]) -> Tuple[List[dic
         if not exists(sb, "users", "user_id", eid):
             errors.append(f"User {eid} not found")
             continue
+        
+        existing = sb.table("project_assignments").select("project_id").eq("employee_id", eid).execute()
+        existing_data = getattr(existing, "data", []) or []
+        if existing_data:
+            existing_project_id = existing_data[0].get("project_id")
+            if existing_project_id == project_id:
+                continue  # already in this project, skip
+            # Transfer: remove from old project then add to this one
+            try:
+                sb.table("project_assignments").delete().eq("project_id", existing_project_id).eq("employee_id", eid).execute()
+            except Exception:
+                pass
+
         try:
             r = sb.table("project_assignments").insert({"project_id": project_id, "employee_id": eid}).execute()
             row, err = one(r, "Assignment")
@@ -159,7 +185,7 @@ def assign_employees(project_id: int, employee_ids: List[int]) -> Tuple[List[dic
                 results.append(row)
         except Exception as e:
             if "unique" in str(e).lower() or "duplicate" in str(e).lower():
-                errors.append(f"Employee {eid} already assigned")
+                errors.append(f"Employee {eid} already assigned to this project")
             else:
                 errors.append(f"Employee {eid}: {str(e)}")
     if errors and not results:
@@ -180,5 +206,9 @@ def remove_member(project_id: int, user_id: int) -> Tuple[bool, Optional[str]]:
 
 
 def employee_can_access_project(sb: Any, project_id: int, employee_id: int) -> bool:
-    r = sb.table("project_assignments").select("assignment_id").eq("project_id", project_id).eq("employee_id", employee_id).limit(1).execute()
-    return len(getattr(r, "data", []) or []) > 0
+    """Return True if employee is assigned to project. Returns False on any Supabase/RLS error."""
+    try:
+        r = sb.table("project_assignments").select("assignment_id").eq("project_id", project_id).eq("employee_id", employee_id).limit(1).execute()
+        return len(getattr(r, "data", []) or []) > 0
+    except Exception:
+        return False

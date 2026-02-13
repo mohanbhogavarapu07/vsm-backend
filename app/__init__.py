@@ -1,6 +1,7 @@
 """
 Flask application factory. Creates app, loads config, registers blueprints, CORS, and Swagger UI.
 """
+import traceback
 from flask import Flask
 from flask_cors import CORS
 from flasgger import Swagger
@@ -16,17 +17,24 @@ def create_app(config_object=None):
     # CORS: apply to all routes so preflight (OPTIONS) and actual requests get headers
     _cors_origins = list(Config.CORS_ORIGINS)
     print(f"[CORS] Allowed origins: {_cors_origins}", flush=True)
+    # Flask-CORS automatically handles OPTIONS requests for preflight
     CORS(
         app,
         origins=_cors_origins,
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        expose_headers=["Content-Type"],
+        max_age=3600,
+        automatic_options=True,  # Automatically handle OPTIONS requests
     )
 
     @app.before_request
     def _log_cors_request():
         from flask import request
+        # Skip logging for OPTIONS - let Flask-CORS handle it
+        if request.method == "OPTIONS":
+            return
         origin = request.headers.get("Origin")
         if origin:
             allowed = origin in _cors_origins
@@ -116,5 +124,15 @@ def create_app(config_object=None):
             msg = f"Invalid path: '{path}'. Replace placeholders with actual IDs (e.g. GET /users/1 not /users/{{user_id}})."
         from app.utils.response import api_error
         return api_error(msg, 404)
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        from app.utils.response import api_error
+        tb = traceback.format_exc()
+        print("[500]", tb, flush=True)
+        msg = str(e) if e else "Internal server error"
+        if not app.debug:
+            msg = "Internal server error"
+        return api_error(msg, 500)
 
     return app

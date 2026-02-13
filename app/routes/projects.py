@@ -4,6 +4,7 @@ Projects and assignments. Admin: full CRUD. Employee: only assigned projects.
 from flask import Blueprint, request, g
 from app.middleware.auth import require_admin, require_auth_admin_or_employee
 from app.services import project_service
+from app.services.db import get_supabase
 from app.utils.response import api_success, api_error
 from app.utils.validators import required_keys, int_or_none
 
@@ -123,8 +124,14 @@ def assign(project_id):
 
 
 @bp.route("/<int:project_id>/members", methods=["GET"])
-@require_admin
+@require_auth_admin_or_employee
 def list_members(project_id):
+    """GET /projects/<id>/members - Admin: all members; Employee: only if assigned to project."""
+    employee_id = _current_employee_id()
+    if employee_id is not None:
+        # Employee: verify they can access this project
+        if not project_service.employee_can_access_project(get_supabase(), project_id, employee_id):
+            return api_error("Project not found", 404)
     data, err = project_service.list_members(project_id)
     if err:
         return api_error(err, 500)

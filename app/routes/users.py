@@ -13,9 +13,10 @@ bp = Blueprint("users", __name__, url_prefix="/users")
 @bp.route("", methods=["GET"])
 @require_admin
 def list_users():
-    """GET /users - List all users (Admin)."""
+    """GET /users - List all users (Admin). Query: role=EMPLOYEE|ADMIN, unassigned=true (only employees not in any project)."""
     role = request.args.get("role")
-    data, err = user_service.list_users(role=role)
+    unassigned = request.args.get("unassigned", "").lower() in ("true", "1", "yes")
+    data, err = user_service.list_users(role=role, unassigned_only=unassigned)
     if err:
         return api_error(err, 500)
     return api_success({"users": data, "count": len(data)})
