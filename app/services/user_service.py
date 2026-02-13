@@ -8,8 +8,9 @@ from werkzeug.security import generate_password_hash
 from typing import Tuple, Optional, List
 
 
-def list_users(role: Optional[str] = None) -> Tuple[List[dict], Optional[str]]:
-    """List all users; optional filter by role."""
+def list_users(role: Optional[str] = None, unassigned_only: bool = False) -> Tuple[List[dict], Optional[str]]:
+    """List all users; optional filter by role. If unassigned_only=True, return EMPLOYEEs available for assignment:
+    not assigned to any project, OR assigned but all their tasks have status DONE (so they can be reassigned)."""
     sb = get_supabase()
     try:
         q = sb.table("users").select("user_id, full_name, email, role, created_at, updated_at").order("user_id")
@@ -17,6 +18,16 @@ def list_users(role: Optional[str] = None) -> Tuple[List[dict], Optional[str]]:
             q = q.eq("role", role)
         r = q.execute()
         data = getattr(r, "data", []) or []
+        if unassigned_only and data:
+            # User IDs that have at least one task not DONE (busy = not available for reassignment)
+            tasks_r = sb.table("tasks").select("assigned_to_user_id").neq("status", "DONE").execute()
+            tasks_data = getattr(tasks_r, "data", []) or []
+            busy_user_ids = {t["assigned_to_user_id"] for t in tasks_data if t.get("assigned_to_user_id")}
+            # Available = EMPLOYEE users with no incomplete tasks (unassigned or all tasks done)
+            data = [
+                u for u in data
+                if (u.get("role") or "") == "EMPLOYEE" and u.get("user_id") not in busy_user_ids
+            ]
         return data, None
     except Exception as e:
         return [], str(e)

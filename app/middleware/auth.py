@@ -67,6 +67,18 @@ def require_auth(f):
 
     @wraps(f)
     def wrapped(*args, **kwargs):
+        # Skip auth for OPTIONS requests (CORS preflight) - Flask-CORS handles these automatically
+        from flask import request
+        if request.method == "OPTIONS":
+            # Return None to let Flask-CORS handle the OPTIONS request
+            from flask import current_app
+            # Flask-CORS will handle this, but we need to return something
+            # that won't trigger an error. Return an empty response.
+            from flask import make_response
+            resp = make_response()
+            resp.status_code = 200
+            return resp
+        
         token = _get_token()
         if not token:
             return api_error("Missing token. Add header: Authorization: Bearer <token>", 401)

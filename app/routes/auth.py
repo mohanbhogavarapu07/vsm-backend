@@ -86,3 +86,15 @@ def me():
     if err:
         return api_error(err, 404)
     return api_success(user, message="OK")
+
+
+@bp.route("/refresh", methods=["POST", "OPTIONS"])
+@require_auth
+def refresh():
+    """POST /auth/refresh - Refresh JWT token with current user data from DB."""
+    user, err = get_user_by_id(g.current_user["user_id"])
+    if err:
+        return api_error(err, 404)
+    # Create new token with current role from DB
+    token = create_token(user["user_id"], user["role"], user["email"])
+    return api_success({"user": user, "token": token}, message="Token refreshed")
