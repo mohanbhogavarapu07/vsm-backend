@@ -19,11 +19,14 @@ def list_users(role: Optional[str] = None, unassigned_only: bool = False) -> Tup
         r = q.execute()
         data = getattr(r, "data", []) or []
         if unassigned_only and data:
-            # User IDs that have at least one task not DONE (busy = not available for reassignment)
+            # Find employees who are "busy" (have at least one incomplete task)
+            # Query: all tasks where status != 'DONE' and assigned_to_user_id is not null
             tasks_r = sb.table("tasks").select("assigned_to_user_id").neq("status", "DONE").execute()
             tasks_data = getattr(tasks_r, "data", []) or []
-            busy_user_ids = {t["assigned_to_user_id"] for t in tasks_data if t.get("assigned_to_user_id")}
-            # Available = EMPLOYEE users with no incomplete tasks (unassigned or all tasks done)
+            # Filter out NULL assigned_to_user_id (unassigned tasks don't count)
+            busy_user_ids = {t["assigned_to_user_id"] for t in tasks_data if t.get("assigned_to_user_id") is not None}
+            # Available employees = those NOT in busy_user_ids (no incomplete tasks)
+            # This includes: unassigned employees AND employees with all tasks DONE
             data = [
                 u for u in data
                 if (u.get("role") or "") == "EMPLOYEE" and u.get("user_id") not in busy_user_ids
