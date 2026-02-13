@@ -16,7 +16,6 @@ def create_app(config_object=None):
 
     # CORS: apply to all routes so preflight (OPTIONS) and actual requests get headers
     _cors_origins = list(Config.CORS_ORIGINS)
-    print(f"[CORS] Allowed origins: {_cors_origins}", flush=True)
     # Flask-CORS automatically handles OPTIONS requests for preflight
     CORS(
         app,
@@ -28,20 +27,6 @@ def create_app(config_object=None):
         max_age=3600,
         automatic_options=True,  # Automatically handle OPTIONS requests
     )
-
-    @app.before_request
-    def _log_cors_request():
-        from flask import request
-        # Skip logging for OPTIONS - let Flask-CORS handle it
-        if request.method == "OPTIONS":
-            return
-        origin = request.headers.get("Origin")
-        if origin:
-            allowed = origin in _cors_origins
-            print(
-                f"[CORS] {request.method} {request.path} Origin={origin!r} allowed={allowed}",
-                flush=True,
-            )
 
     # Swagger UI at /apidocs (Flasgger default)
     Swagger(app, template=SWAGGER_TEMPLATE)
