@@ -2,9 +2,12 @@
 Application configuration loaded from environment variables.
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from backend project root (vsm-backend) so it works regardless of cwd
+_backend_root = Path(__file__).resolve().parent.parent
+load_dotenv(_backend_root / ".env")
 
 
 def _str(key: str, default: str = "") -> str:

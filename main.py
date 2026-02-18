@@ -10,6 +10,7 @@ app = create_app()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", Config.PORT))
     print("Starting AI-Powered Virtual Scrum Master API on port", port, flush=True)
+    print("CORS allowed origins:", Config.CORS_ORIGINS, flush=True)
     if Config.supabase_configured():
         print("Supabase configured.", flush=True)
     else:
