@@ -1,22 +1,26 @@
 """
 Supabase client singleton and DB helpers.
 """
+import threading
 from flask import current_app
 from supabase import create_client, Client
 from typing import Optional, List, Any
 
 _supabase: Optional[Client] = None
+_supabase_lock = threading.Lock()
 
 
 def get_supabase() -> Client:
     """Get Supabase client (requires app context)."""
     global _supabase
     if _supabase is None:
-        url = current_app.config.get("SUPABASE_URL")
-        key = current_app.config.get("SUPABASE_KEY")
-        if not url or not key:
-            raise RuntimeError("Supabase is not configured (SUPABASE_URL / SUPABASE_KEY).")
-        _supabase = create_client(url, key)
+        with _supabase_lock:
+            if _supabase is None:
+                url = current_app.config.get("SUPABASE_URL")
+                key = current_app.config.get("SUPABASE_KEY")
+                if not url or not key:
+                    raise RuntimeError("Supabase is not configured (SUPABASE_URL / SUPABASE_KEY).")
+                _supabase = create_client(url, key)
     return _supabase
 
 
