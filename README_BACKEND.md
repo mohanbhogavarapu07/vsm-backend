@@ -76,6 +76,3 @@ Use `Authorization: Bearer <token>` on all protected routes.
 See **API_DOCS.md** for all endpoints and example payloads.
 
 ## Chat & AI
-
-- **POST /chat/send** – Body: `project_id`, `message`. Stores user message, runs stub `ai_generate_response()`, detects keywords (e.g. "task 5 done", "started", "blocked") and updates task status, stores AI message, returns both. Replace `ai_generate_response
-
