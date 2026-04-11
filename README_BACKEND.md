@@ -81,4 +81,3 @@ See **API_DOCS.md** for all endpoints and example payloads.
 
 ## Legacy
 
-The previous single-file API is in `app.py`. Use **main.py** + **app/** for the new backend.
